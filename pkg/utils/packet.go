@@ -7,12 +7,14 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"net"
 	"syscall"
 
 	current "github.com/containernetworking/cni/pkg/types/100"
+	opiutils "github.com/opiproject/opi-evpn-bridge/pkg/utils"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv6"
@@ -173,10 +175,12 @@ func SendUnsolicitedNeighborAdvertisement(srcIP net.IP, linkObj netlink.Link) er
 
 // AnnounceIPs sends either a GARP or Unsolicited NA depending on the IP address type (IPv4 vs. IPv6 respectively) configured on the interface.
 func AnnounceIPs(ifName string, ipConfigs []*current.IPConfig) error {
-	myNetLink := MyNetlink{}
+	ctx := context.Background()
+
+	myNetLink := opiutils.NetlinkWrapper{}
 
 	// Retrieve the interface name in the container.
-	linkObj, err := myNetLink.LinkByName(ifName)
+	linkObj, err := myNetLink.LinkByName(ctx, ifName)
 	if err != nil {
 		return fmt.Errorf("failed to get netlink device with name %q: %v", ifName, err)
 	}

@@ -7,12 +7,14 @@
 package sriov
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
 
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/k8snetworkplumbingwg/sriovnet"
+	opiutils "github.com/opiproject/opi-evpn-bridge/pkg/utils"
 
 	evpngwtypes "github.com/opiproject/opi-gateway-evpn-cni/pkg/types"
 	"github.com/opiproject/opi-gateway-evpn-cni/pkg/utils"
@@ -54,23 +56,25 @@ type Manager interface {
 }
 
 type sriovManager struct {
-	nLink utils.NetlinkManager
+	nLink opiutils.Netlink
 	utils pciUtils
 }
 
 // NewSriovManager returns an instance of SriovManager
 func NewSriovManager() Manager {
 	return &sriovManager{
-		nLink: &utils.MyNetlink{},
+		nLink: opiutils.NewNetlinkWrapperWithArgs(false),
 		utils: &pciUtilsImpl{},
 	}
 }
 
 // SetupVF sets up a VF in Pod netns
 func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netns ns.NetNS) (string, error) {
+	ctx := context.Background()
+
 	linkName := conf.OrigVfState.HostIFName
 
-	linkObj, err := s.nLink.LinkByName(linkName)
+	linkObj, err := s.nLink.LinkByName(ctx, linkName)
 	if err != nil {
 		return "", fmt.Errorf("error getting VF netdevice with name %s", linkName)
 	}
@@ -79,12 +83,12 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 	tempName := fmt.Sprintf("%s%d", "temp_", linkObj.Attrs().Index)
 
 	// 1. Set link down
-	if err := s.nLink.LinkSetDown(linkObj); err != nil {
+	if err := s.nLink.LinkSetDown(ctx, linkObj); err != nil {
 		return "", fmt.Errorf("failed to down vf device %q: %v", linkName, err)
 	}
 
 	// 2. Set temp name
-	if err := s.nLink.LinkSetName(linkObj, tempName); err != nil {
+	if err := s.nLink.LinkSetName(ctx, linkObj, tempName); err != nil {
 		return "", fmt.Errorf("error setting temp IF name %s for %s", tempName, linkName)
 	}
 
@@ -125,13 +129,13 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 	}*/
 
 	// 4. Change netns
-	if err := s.nLink.LinkSetNsFd(linkObj, int(netns.Fd())); err != nil {
+	if err := s.nLink.LinkSetNsFd(ctx, linkObj, int(netns.Fd())); err != nil {
 		return "", fmt.Errorf("failed to move IF %s to netns: %q", tempName, err)
 	}
 
 	if err := netns.Do(func(_ ns.NetNS) error {
 		// 5. Set Pod IF name
-		if err := s.nLink.LinkSetName(linkObj, podifName); err != nil {
+		if err := s.nLink.LinkSetName(ctx, linkObj, podifName); err != nil {
 			return fmt.Errorf("error setting container interface name %s for %s", linkName, tempName)
 		}
 
@@ -140,7 +144,7 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 		_ = s.utils.EnableArpAndNdiscNotify(podifName)
 
 		// 7. Bring IF up in Pod netns
-		if err := s.nLink.LinkSetUp(linkObj); err != nil {
+		if err := s.nLink.LinkSetUp(ctx, linkObj); err != nil {
 			return fmt.Errorf("error bringing interface up in container ns: %q", err)
 		}
 
@@ -154,6 +158,8 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 
 // ReleaseVF reset a VF from Pod netns and return it to init netns
 func (s *sriovManager) ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS, netNSPath string) error {
+	ctx := context.Background()
+
 	initns, err := ns.GetCurrentNS()
 	if err != nil {
 		return fmt.Errorf("ReleaseVF(): failed to get init netns: %v", err)
@@ -174,24 +180,24 @@ func (s *sriovManager) ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS, netN
 	podifName := vfNetdevices[0]
 	return netns.Do(func(_ ns.NetNS) error {
 		// get VF device
-		linkObj, err := s.nLink.LinkByName(podifName)
+		linkObj, err := s.nLink.LinkByName(ctx, podifName)
 		if err != nil {
 			return fmt.Errorf("ReleaseVF(): failed to get netlink device with name %s: %q", podifName, err)
 		}
 
 		// shutdown VF device
-		if err = s.nLink.LinkSetDown(linkObj); err != nil {
+		if err = s.nLink.LinkSetDown(ctx, linkObj); err != nil {
 			return fmt.Errorf("ReleaseVF(): failed to set link %s down: %q", podifName, err)
 		}
 
 		// rename VF device
-		err = s.nLink.LinkSetName(linkObj, conf.OrigVfState.HostIFName)
+		err = s.nLink.LinkSetName(ctx, linkObj, conf.OrigVfState.HostIFName)
 		if err != nil {
 			return fmt.Errorf("ReleaseVF(): failed to rename link %s to host name %s: %q", podifName, conf.OrigVfState.HostIFName, err)
 		}
 
 		// Bring VF device UP
-		err = s.nLink.LinkSetUp(linkObj)
+		err = s.nLink.LinkSetUp(ctx, linkObj)
 		if err != nil {
 			return fmt.Errorf("ReleaseVF(): failed to set link %s up: %q", podifName, err)
 		}
@@ -213,7 +219,7 @@ func (s *sriovManager) ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS, netN
 		}*/
 
 		// move VF device to init netns
-		if err = s.nLink.LinkSetNsFd(linkObj, int(initns.Fd())); err != nil {
+		if err = s.nLink.LinkSetNsFd(ctx, linkObj, int(initns.Fd())); err != nil {
 			return fmt.Errorf("ReleaseVF(): failed to move interface %s to init netns: %v", conf.OrigVfState.HostIFName, err)
 		}
 
@@ -418,6 +424,8 @@ func (s *sriovManager) ResetVF(conf *evpngwtypes.NetConf) error {
 	// Maybe in this function we need to handle the OriginalVfState.EffectiveMac
 	// Check ReleaseVF func
 
+	ctx := context.Background()
+
 	// get VF netdevice from PCI
 	vfNetdevices, err := sriovnet.GetNetDevicesFromPci(conf.DeviceID)
 	if err != nil {
@@ -434,13 +442,13 @@ func (s *sriovManager) ResetVF(conf *evpngwtypes.NetConf) error {
 	curNetVFName := vfNetdevices[0]
 
 	// get VF device
-	linkObj, err := s.nLink.LinkByName(curNetVFName)
+	linkObj, err := s.nLink.LinkByName(ctx, curNetVFName)
 	if err != nil {
 		return fmt.Errorf("ResetVF(): failed to get netlink device with name %s: %q", curNetVFName, err)
 	}
 
 	// shutdown VF device
-	if err = s.nLink.LinkSetDown(linkObj); err != nil {
+	if err = s.nLink.LinkSetDown(ctx, linkObj); err != nil {
 		return fmt.Errorf("ResetVF(): failed to set link %s down: %q", curNetVFName, err)
 	}
 
@@ -464,13 +472,13 @@ func (s *sriovManager) ResetVF(conf *evpngwtypes.NetConf) error {
 	}
 
 	// rename VF device
-	err = s.nLink.LinkSetName(linkObj, conf.OrigVfState.HostIFName)
+	err = s.nLink.LinkSetName(ctx, linkObj, conf.OrigVfState.HostIFName)
 	if err != nil {
 		return fmt.Errorf("ResetVF(): failed to rename link %s to host name %s: %q", curNetVFName, conf.OrigVfState.HostIFName, err)
 	}
 
 	// Bring VF device UP
-	err = s.nLink.LinkSetUp(linkObj)
+	err = s.nLink.LinkSetUp(ctx, linkObj)
 	if err != nil {
 		return fmt.Errorf("ResetVF(): failed to set link %s up: %q", curNetVFName, err)
 	}

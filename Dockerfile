@@ -3,7 +3,7 @@
 # Copyright (C) 2023 Network Plumping Working Group
 # Copyright (C) 2023 Nordix Foundation.
 
-FROM golang:1.20-alpine3.19 as builder
+FROM docker.io/library/golang:1.20-alpine3.19 as builder
 
 COPY . /usr/src/evpn-gw-cni
 
