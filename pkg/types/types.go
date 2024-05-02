@@ -41,8 +41,9 @@ type NetConf struct {
 	LogicalBridge     string   `json:"logical_bridge,omitempty"`
 	LogicalBridges    []string `json:"logical_bridges,omitempty"`
 	PortType          string
-	BridgePortName    string // Stores the "name" of the created Bridge Port
-	DeviceID          string `json:"deviceID"` // PCI address of a VF in valid sysfs format
+	BridgePortName    string   // Stores the "name" of the created Bridge Port
+	TotalIntfNames    []string // Stores all the possible "names" of the interface
+	DeviceID          string   `json:"deviceID"` // PCI address of a VF in valid sysfs format
 	VFID              int
 	MinTxRate         *int   `json:"min_tx_rate"`          // Mbps, 0 = disable rate limiting (XPU Not supported)
 	MaxTxRate         *int   `json:"max_tx_rate"`          // Mbps, 0 = disable rate limiting (XPU Not supported)

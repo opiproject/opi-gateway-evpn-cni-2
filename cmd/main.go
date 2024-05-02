@@ -112,7 +112,7 @@ func deleteResources(args *skel.CmdArgs, netConf *evpngwtypes.NetConf) error {
 				}()
 
 				// Release VF from Pods namespace and rename it to the original name
-				err = sm.ReleaseVF(netConf, netns, args.Netns)
+				err = sm.ReleaseVF(netConf, netns)
 				if err != nil {
 					return fmt.Errorf("deleteResources() error releasing VF: %q", err)
 				}

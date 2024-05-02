@@ -18,6 +18,7 @@ import (
 
 	evpngwtypes "github.com/opiproject/opi-gateway-evpn-cni/pkg/types"
 	"github.com/opiproject/opi-gateway-evpn-cni/pkg/utils"
+	"github.com/vishvananda/netlink"
 )
 
 type pciUtils interface {
@@ -48,7 +49,7 @@ func (p *pciUtilsImpl) EnableArpAndNdiscNotify(ifName string) error {
 // Manager provides interface invoke sriov nic related operations
 type Manager interface {
 	SetupVF(conf *evpngwtypes.NetConf, podifName string, netns ns.NetNS) (string, error)
-	ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS, netNSPath string) error
+	ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS) error
 	ResetVFConfig(conf *evpngwtypes.NetConf) error
 	ResetVF(conf *evpngwtypes.NetConf) error
 	ApplyVFConfig(conf *evpngwtypes.NetConf) error
@@ -73,6 +74,7 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 	ctx := context.Background()
 
 	linkName := conf.OrigVfState.HostIFName
+	conf.TotalIntfNames = append(conf.TotalIntfNames, linkName)
 
 	linkObj, err := s.nLink.LinkByName(ctx, linkName)
 	if err != nil {
@@ -91,6 +93,8 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 	if err := s.nLink.LinkSetName(ctx, linkObj, tempName); err != nil {
 		return "", fmt.Errorf("error setting temp IF name %s for %s", tempName, linkName)
 	}
+
+	conf.TotalIntfNames = append(conf.TotalIntfNames, tempName)
 
 	macAddress := linkObj.Attrs().HardwareAddr.String()
 	if conf.MAC != "" {
@@ -139,6 +143,8 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 			return fmt.Errorf("error setting container interface name %s for %s", linkName, tempName)
 		}
 
+		conf.TotalIntfNames = append(conf.TotalIntfNames, podifName)
+
 		// 6. Enable IPv4 ARP notify and IPv6 Network Discovery notify
 		// Error is ignored here because enabling this feature is only a performance enhancement.
 		_ = s.utils.EnableArpAndNdiscNotify(podifName)
@@ -157,7 +163,9 @@ func (s *sriovManager) SetupVF(conf *evpngwtypes.NetConf, podifName string, netn
 }
 
 // ReleaseVF reset a VF from Pod netns and return it to init netns
-func (s *sriovManager) ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS, netNSPath string) error {
+func (s *sriovManager) ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS) error {
+	var linkObj netlink.Link
+	var podifName string
 	ctx := context.Background()
 
 	initns, err := ns.GetCurrentNS()
@@ -165,24 +173,29 @@ func (s *sriovManager) ReleaseVF(conf *evpngwtypes.NetConf, netns ns.NetNS, netN
 		return fmt.Errorf("ReleaseVF(): failed to get init netns: %v", err)
 	}
 
-	// get VF netdevice from PCI that is attached to container. This is executed on the host namespace accessing
-	// the containers filesystem through the /proc/<PID> path on the host.
-	vfNetdevices, err := utils.GetContainerNetDevFromPci(netNSPath, conf.DeviceID)
-	if err != nil {
-		return fmt.Errorf("ReleaseVF(): failed to get VF netdevice from PCI %s : %v", conf.DeviceID, err)
-	}
-
-	if len(vfNetdevices) == 0 {
-		// The VF has not been found in the Container namespace so no point to continue
+	if len(conf.TotalIntfNames) == 0 {
+		// No SetupVF action has been executed as the slice is empty.
+		// There is no point to continue further
 		return nil
 	}
 
-	podifName := vfNetdevices[0]
 	return netns.Do(func(_ ns.NetNS) error {
 		// get VF device
-		linkObj, err := s.nLink.LinkByName(ctx, podifName)
-		if err != nil {
-			return fmt.Errorf("ReleaseVF(): failed to get netlink device with name %s: %q", podifName, err)
+		for _, ifName := range conf.TotalIntfNames {
+			tempLinkObj, err := s.nLink.LinkByName(ctx, ifName)
+			if err != nil {
+				continue
+			}
+			linkObj = tempLinkObj
+			podifName = ifName
+			break
+		}
+
+		if linkObj == nil {
+			// The VF has not been found in the container's namespace so no point to continue.
+			// This is according to the idempotent logic where if something is not found
+			// then is considered that is not an error.
+			return nil
 		}
 
 		// shutdown VF device
@@ -448,6 +461,12 @@ func (s *sriovManager) ResetVF(conf *evpngwtypes.NetConf) error {
 	}
 
 	// shutdown VF device
+	// Although this call is executed successfully
+	// sometimes the VF is not going down. That makes
+	// the system to report a "resource is busy" error when
+	// we try to rename the interface further below.
+	// This error is not fatal and the interface gets renamed correctly
+	// so we will not do anything to address the issue currently.
 	if err = s.nLink.LinkSetDown(ctx, linkObj); err != nil {
 		return fmt.Errorf("ResetVF(): failed to set link %s down: %q", curNetVFName, err)
 	}
