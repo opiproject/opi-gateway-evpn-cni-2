@@ -177,7 +177,7 @@ func SendUnsolicitedNeighborAdvertisement(srcIP net.IP, linkObj netlink.Link) er
 func AnnounceIPs(ifName string, ipConfigs []*current.IPConfig) error {
 	ctx := context.Background()
 
-	myNetLink := opiutils.NetlinkWrapper{}
+	myNetLink := opiutils.NewNetlinkWrapperWithArgs(false)
 
 	// Retrieve the interface name in the container.
 	linkObj, err := myNetLink.LinkByName(ctx, ifName)

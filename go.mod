@@ -44,4 +44,4 @@ require (
 	google.golang.org/protobuf v1.32.0 // indirect
 )
 
-replace github.com/opiproject/opi-evpn-bridge => github.com/mardim91/opi-evpn-bridge v0.0.0-20240426100730-82abad652a1e
+replace github.com/opiproject/opi-evpn-bridge => github.com/mardim91/opi-evpn-bridge v0.0.0-20240513142615-06a793288bf1
