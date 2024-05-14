@@ -160,8 +160,6 @@ github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/mardim91/opi-evpn-bridge v0.0.0-20240513142615-06a793288bf1 h1:T8onrSKJIccP9E5++GtgN4zSl6nXyy7uFrVxq9fhY0Q=
-github.com/mardim91/opi-evpn-bridge v0.0.0-20240513142615-06a793288bf1/go.mod h1:0SsCMInH7SAg4ML4aI/Ts8jt7iXyMmcqxBPUD3y4EgQ=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
@@ -179,6 +177,8 @@ github.com/opiproject/godpu v0.2.1-0.20240412165547-e4af793befd9 h1:uUPSva7ppbKq
 github.com/opiproject/godpu v0.2.1-0.20240412165547-e4af793befd9/go.mod h1:j+3qLWOGcUt6rMv7/ZWW2LcsBUSrxF4+2ue4Y/bALeQ=
 github.com/opiproject/opi-api v0.0.0-20240304222410-5dba226aaa9e h1:jUa7DmVLjzLKg051y7rYyCD0NAbEHZQMimM1451D74I=
 github.com/opiproject/opi-api v0.0.0-20240304222410-5dba226aaa9e/go.mod h1:92pv4ulvvPMuxCJ9ND3aYbmBfEMLx0VCjpkiR7ZTqPY=
+github.com/opiproject/opi-evpn-bridge v0.1.1-0.20240514095347-2d1d2ba1e62a h1:ee+qa6ImayAxsIdWNoxpDwEwJgjaBdVg8ss2GCz1VPQ=
+github.com/opiproject/opi-evpn-bridge v0.1.1-0.20240514095347-2d1d2ba1e62a/go.mod h1:0SsCMInH7SAg4ML4aI/Ts8jt7iXyMmcqxBPUD3y4EgQ=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/sftp v1.13.1/go.mod h1:3HaPG6Dq1ILlpPZRO0HVMrsydcdLt6HRDccSgb87qRg=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

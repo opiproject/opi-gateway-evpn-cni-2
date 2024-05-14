@@ -9,7 +9,7 @@ require (
 	github.com/k8snetworkplumbingwg/sriovnet v1.2.0
 	github.com/opiproject/godpu v0.2.1-0.20240412165547-e4af793befd9
 	github.com/opiproject/opi-api v0.0.0-20240304222410-5dba226aaa9e
-	github.com/opiproject/opi-evpn-bridge v0.1.1-0.20240425152645-d33fbefc0eb4
+	github.com/opiproject/opi-evpn-bridge v0.1.1-0.20240514095347-2d1d2ba1e62a
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20240226175043-124bb8e72178
 	golang.org/x/net v0.21.0
 	google.golang.org/grpc v1.61.0
@@ -43,5 +43,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240108191215-35c7eff3a6b1 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 )
-
-replace github.com/opiproject/opi-evpn-bridge => github.com/mardim91/opi-evpn-bridge v0.0.0-20240513142615-06a793288bf1
